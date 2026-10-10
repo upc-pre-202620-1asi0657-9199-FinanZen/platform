@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Panel financiero de FinanZen para registrar movimientos y consultar el resumen mensual."
+    />
+    <title>FinanZen | Control financiero</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <script src="/app.js" defer></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Navegación principal">
+        <a class="brand" href="#dashboard" aria-label="FinanZen, inicio">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 40 40" role="img">
+              <path d="M9 27c6-1 8-7 9-16 8 4 13 10 13 18" />
+              <path d="M8 31c7-6 15-8 24-6" />
+            </svg>
+          </span>
+          <span>Finan<span>Zen</span></span>
+        </a>
+
+        <nav class="nav-list">
+          <a class="nav-item active" href="#dashboard">
+            <span class="nav-icon">⌂</span><span>Resumen</span>
+          </a>
+          <a class="nav-item" href="#transactions">
+            <span class="nav-icon">↕</span><span>Movimientos</span>
+          </a>
+          <a class="nav-item" href="#analysis">
+            <span class="nav-icon">◔</span><span>Análisis</span>
+          </a>
+          <button class="nav-item nav-button" id="openTransactionButton" type="button">
+            <span class="nav-icon">＋</span><span>Nuevo registro</span>
+          </button>
+        </nav>
+
+        <div class="sidebar-card">
+          <span class="sidebar-card-icon">✦</span>
+          <p>Construye hábitos financieros saludables.</p>
+          <small>Avance funcional · v0.1</small>
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <header class="topbar">
+          <button class="mobile-menu" id="mobileMenu" type="button" aria-label="Abrir menú">☰</button>
+          <div>
+            <p class="eyebrow">Panel financiero</p>
+            <h1>Hola, <span id="profileName">usuario</span></h1>
+          </div>
+          <div class="topbar-actions">
+            <label class="month-control">
+              <span>Periodo</span>
+              <input id="monthPicker" type="month" aria-label="Periodo del resumen" />
+            </label>
+            <div class="profile-chip" title="Identidad demostrativa">
+              <span class="avatar">FZ</span>
+              <div>
+                <strong>Cuenta demo</strong>
+                <small id="userIdLabel">demo-user</small>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <section class="hero" id="dashboard">
+          <div>
+            <p class="eyebrow light">Tu balance disponible</p>
+            <p class="hero-balance" id="balanceValue">S/ 0.00</p>
+            <p class="hero-copy">Ingresos menos gastos del periodo seleccionado.</p>
+          </div>
+          <button class="primary-button light-button" id="heroTransactionButton" type="button">
+            <span>＋</span> Registrar movimiento
+          </button>
+          <span class="hero-orb orb-one" aria-hidden="true"></span>
+          <span class="hero-orb orb-two" aria-hidden="true"></span>
+        </section>
+
+        <section class="summary-grid" aria-label="Resumen del mes">
+          <article class="summary-card">
+            <div class="summary-icon income-icon">↗</div>
+            <div>
+              <p>Ingresos</p>
+              <strong id="incomeValue">S/ 0.00</strong>
+              <small>Durante el periodo</small>
+            </div>
+          </article>
+          <article class="summary-card">
+            <div class="summary-icon expense-icon">↘</div>
+            <div>
+              <p>Gastos</p>
+              <strong id="expenseValue">S/ 0.00</strong>
+              <small>Durante el periodo</small>
+            </div>
+          </article>
+          <article class="summary-card">
+            <div class="summary-icon movement-icon">↕</div>
+            <div>
+              <p>Movimientos</p>
+              <strong id="movementCount">0</strong>
+              <small>Registros encontrados</small>
+            </div>
+          </article>
+        </section>
+
+        <section class="content-grid">
+          <article class="panel transactions-panel" id="transactions">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Actividad reciente</p>
+                <h2>Últimos movimientos</h2>
+              </div>
+              <button class="text-button" id="refreshButton" type="button">Actualizar</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Descripción</th>
+                    <th>Categoría</th>
+                    <th>Fecha</th>
+                    <th class="align-right">Importe</th>
+                  </tr>
+                </thead>
+                <tbody id="transactionRows"></tbody>
+              </table>
+              <div class="empty-state" id="emptyState">
+                <span>◎</span>
+                <h3>Aún no hay movimientos</h3>
+                <p>Registra un ingreso o gasto para comenzar tu resumen.</p>
+              </div>
+            </div>
+          </article>
+
+          <article class="panel analysis-panel" id="analysis">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Distribución</p>
+                <h2>Gastos por categoría</h2>
+              </div>
+            </div>
+            <div class="donut-layout">
+              <div class="donut" id="expenseDonut" aria-label="Distribución de gastos">
+                <div>
+                  <small>Total</small>
+                  <strong id="donutTotal">S/ 0</strong>
+                </div>
+              </div>
+              <div class="legend" id="expenseLegend"></div>
+            </div>
+          </article>
+        </section>
+
+        <p class="connection-status" id="connectionStatus" role="status">
+          <span></span> Conectando con el servicio…
+        </p>
+      </main>
+    </div>
+
+    <div class="modal-backdrop" id="transactionModal" hidden>
+      <section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <div class="modal-heading">
+          <div>
+            <p class="eyebrow">Nuevo registro</p>
+            <h2 id="modalTitle">Agregar movimiento</h2>
+          </div>
+          <button class="close-button" id="closeModalButton" type="button" aria-label="Cerrar">×</button>
+        </div>
+
+        <form id="transactionForm">
+          <div class="type-selector" role="group" aria-label="Tipo de movimiento">
+            <label>
+              <input type="radio" name="type" value="income" checked />
+              <span>↗ Ingreso</span>
+            </label>
+            <label>
+              <input type="radio" name="type" value="expense" />
+              <span>↘ Gasto</span>
+            </label>
+          </div>
+
+          <label class="field amount-field">
+            <span>Importe</span>
+            <div><b>S/</b><input name="amount" type="number" min="0.01" step="0.01" placeholder="0.00" required /></div>
+          </label>
+
+          <div class="form-grid">
+            <label class="field">
+              <span>Categoría</span>
+              <select name="category" required>
+                <option value="salary">Sueldo</option>
+                <option value="sales">Ventas</option>
+                <option value="food">Alimentación</option>
+                <option value="transport">Transporte</option>
+                <option value="services">Servicios</option>
+                <option value="education">Educación</option>
+                <option value="entertainment">Entretenimiento</option>
+                <option value="other">Otros</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Fecha</span>
+              <input name="occurred_at" type="datetime-local" required />
+            </label>
+          </div>
+
+          <label class="field">
+            <span>Descripción</span>
+            <input name="description" type="text" maxlength="240" placeholder="Ej. compra semanal" />
+          </label>
+
+          <input name="account_id" type="hidden" value="cash-account" />
+          <p class="form-message" id="formMessage" role="alert"></p>
+
+          <div class="modal-actions">
+            <button class="secondary-button" id="cancelButton" type="button">Cancelar</button>
+            <button class="primary-button" id="submitButton" type="submit">Guardar movimiento</button>
+          </div>
+        </form>
+      </section>
+    </div>
+  </body>
+</html>
