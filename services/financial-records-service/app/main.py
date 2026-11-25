@@ -95,6 +95,13 @@ def create_app(database_path: str | None = None) -> FastAPI:
             )
         return repository.monthly_summary(x_user_id, month, currency)
 
+    @app.get(
+        "/api/v1/outbox",
+        tags=["Events"],
+    )
+    def list_outbox_events():
+        return repository.list_pending_events()
+
     frontend_path = Path(__file__).resolve().parent.parent / "frontend"
     app.mount("/", StaticFiles(directory=frontend_path, html=True), name="frontend")
 
