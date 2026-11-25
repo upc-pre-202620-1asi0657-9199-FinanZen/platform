@@ -44,6 +44,19 @@ class FinancialRecordsRepository:
                 "CREATE INDEX IF NOT EXISTS idx_transactions_owner_date "
                 "ON transactions(user_id, occurred_at)"
             )
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS outbox_events (
+                    id TEXT PRIMARY KEY,
+                    aggregate_id TEXT NOT NULL,
+                    event_type TEXT NOT NULL,
+                    payload TEXT NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'pending',
+                    created_at TEXT NOT NULL,
+                    published_at TEXT
+                )
+                """
+            )
 
     def create_transaction(
         self,
@@ -84,6 +97,41 @@ class FinancialRecordsRepository:
                     transaction.category,
                     transaction.occurred_at.isoformat(),
                     transaction.description,
+                    created_at.isoformat(),
+                ),
+            )
+            event_id = str(uuid4())
+            event_payload = {
+                "event_id": event_id,
+                "event_type": "TransactionRecorded",
+                "transaction_id": transaction_id,
+                "user_id": user_id,
+                "account_id": transaction.account_id,
+                "type": transaction.type.value,
+                "amount": str(transaction.amount),
+                "currency": transaction.currency,
+                "category": transaction.category,
+                "occurred_at": transaction.occurred_at.isoformat(),
+                "created_at": created_at.isoformat(),
+            }
+            connection.execute(
+                """
+                INSERT INTO outbox_events (
+                    id,
+                    aggregate_id,
+                    event_type,
+                    payload,
+                    status,
+                    created_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    event_id,
+                    transaction_id,
+                    "TransactionRecorded",
+                    json.dumps(event_payload),
+                    "pending",
                     created_at.isoformat(),
                 ),
             )
@@ -131,6 +179,46 @@ class FinancialRecordsRepository:
             balance=income - expenses,
             transaction_count=len(rows),
         )
+
+    def list_pending_events(self) -> list[dict]:
+        with self._connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT *
+                FROM outbox_events
+                WHERE status = 'pending'
+                ORDER BY created_at ASC
+                """
+            ).fetchall()
+
+        return [
+            {
+                "id": row["id"],
+                "aggregate_id": row["aggregate_id"],
+                "event_type": row["event_type"],
+                "payload": json.loads(row["payload"]),
+                "status": row["status"],
+                "created_at": row["created_at"],
+            }
+            for row in rows
+        ]
+
+    def mark_event_as_published(self, event_id: str) -> None:
+        published_at = datetime.now(timezone.utc).isoformat()
+
+        with self._connect() as connection:
+            connection.execute(
+                """
+                UPDATE outbox_events
+                SET status = 'published',
+                    published_at = ?
+                WHERE id = ?
+                """,
+                (
+                    published_at,
+                    event_id,
+                ),
+            )
 
     def _connect(self) -> sqlite3.Connection:
         connection = sqlite3.connect(self.database_path, timeout=10)

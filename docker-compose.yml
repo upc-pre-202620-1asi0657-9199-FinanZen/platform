@@ -1,0 +1,149 @@
+services:
+  kafka:
+    image: apache/kafka:4.4.0
+    container_name: finanzen-kafka
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+
+  financial-records-service:
+    build:
+      context: ./services/financial-records-service
+    container_name: finanzen-financial-records
+    ports:
+      - "8000:8000"
+    environment:
+      FINANZEN_DB_PATH: /app/data/financial_records.db
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    volumes:
+      - financial_records_data:/app/data
+    depends_on:
+      - kafka
+
+  financial-records-publisher:
+    build:
+      context: ./services/financial-records-service
+    container_name: finanzen-financial-records-publisher
+    command: python -m app.outbox_publisher
+    environment:
+      FINANZEN_DB_PATH: /app/data/financial_records.db
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    volumes:
+      - financial_records_data:/app/data
+    depends_on:
+      - kafka
+      - financial-records-service
+
+  budget-service:
+    build:
+      context: ./services/budget-service
+    container_name: finanzen-budget
+    ports:
+      - "8001:8001"
+    environment:
+      FINANZEN_BUDGET_DB_PATH: /app/data/budgets.db
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    volumes:
+      - budget_data:/app/data
+    depends_on:
+      - kafka
+
+  budget-consumer:
+    build:
+      context: ./services/budget-service
+    container_name: finanzen-budget-consumer
+    command: python -m app.kafka_consumer
+    environment:
+      FINANZEN_BUDGET_DB_PATH: /app/data/budgets.db
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    volumes:
+      - budget_data:/app/data
+    depends_on:
+      - kafka
+      - budget-service
+
+  budget-publisher:
+    build:
+      context: ./services/budget-service
+    container_name: finanzen-budget-publisher
+    command: python -m app.outbox_publisher
+    environment:
+      FINANZEN_BUDGET_DB_PATH: /app/data/budgets.db
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    volumes:
+      - budget_data:/app/data
+    depends_on:
+      - kafka
+      - budget-service
+
+  notification-service:
+    build:
+      context: ./services/notification-service
+    container_name: finanzen-notification
+    ports:
+      - "8002:8002"
+    environment:
+      FINANZEN_NOTIFICATION_DB_PATH: /app/data/notifications.db
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    volumes:
+      - notification_data:/app/data
+    depends_on:
+      - kafka
+
+  notification-consumer:
+    build:
+      context: ./services/notification-service
+    container_name: finanzen-notification-consumer
+    command: python -m app.kafka_consumer
+    environment:
+      FINANZEN_NOTIFICATION_DB_PATH: /app/data/notifications.db
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    volumes:
+      - notification_data:/app/data
+    depends_on:
+      - kafka
+      - notification-service
+
+  device-integration-service:
+    build:
+      context: ./services/device-integration-service
+    container_name: finanzen-device-integration
+    ports:
+      - "8003:8003"
+    environment:
+      FINANZEN_DEVICE_DB_PATH: /app/data/device_integration.db
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    volumes:
+      - device_data:/app/data
+    depends_on:
+      - kafka
+
+  device-publisher:
+    build:
+      context: ./services/device-integration-service
+    container_name: finanzen-device-publisher
+    command: python -m app.outbox_publisher
+    environment:
+      FINANZEN_DEVICE_DB_PATH: /app/data/device_integration.db
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    volumes:
+      - device_data:/app/data
+    depends_on:
+      - kafka
+      - device-integration-service
+
+volumes:
+  financial_records_data:
+  budget_data:
+  notification_data:
+  device_data:
